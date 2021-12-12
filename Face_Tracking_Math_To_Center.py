@@ -2,9 +2,13 @@ import cv2
 import mediapipe as mp
 import time
 import numpy as np
+import serial
+
 
 import math
 wCam, hCam=1280,720
+Move_x_previous=0
+Move_x=0
 #https://www.youtube.com/watch?v=jn1HSXVmIrA&t=2073s
 class FaceDetector():
     def __init__(self,minDetectionCon=0.7):
@@ -37,18 +41,19 @@ class FaceDetector():
                                 3, (0, 255, 0), 2)
                     center_X, center_Y = bbox[0] + (bbox[2] / 2), bbox[1] + (bbox[3]/2)
                     length = math.hypot(wCam/2-center_X, hCam/2 + center_Y)
-                    cv2.line(img, (int(wCam/2), int(hCam/2)), (int(center_X), int(center_Y)), (255, 0, 255), 2)
+                    #cv2.line(img, (int(wCam/2), int(hCam/2)), (int(center_X), int(center_Y)), (255, 0, 255), 2)
                     # Hand Range from 250 to 30
                     # Volume (-64.0, 0.0, 0.03125)
                     Move_x=wCam/2-center_X
                     Move_y=hCam/2-center_Y
-                    print('X:'+ str(Move_x))
-                    print('Y:'+str(Move_y))
+                    #print('X:'+ str(Move_x))
+                    #print('Y:'+str(Move_y))
                     #print(int(length))
 
 
 
-        return img, bboxs
+
+        return img, bboxs, Move_x, Move_y
 
     def fancyDraw(self,img,bbox,l=30,t=10,rt=1):
         x,y,w,h =bbox
@@ -86,16 +91,29 @@ class FaceDetector():
         return img
 
 def main():
-
+    Move_x_previous=0
+    Move_yy=0
+    Move_xx=0
     cap = cv2.VideoCapture(0)
     cap.set(3, wCam)
     cap.set(4, hCam)
     pTime = 0
     detector= FaceDetector()
+    Arduino = serial.Serial('COM5', 9600, timeout=1)
     while True:
         success, img = cap.read()
-        img,bboxs=detector.findFaces(img)
+        img,bboxs,Move_xx,Move_yy=detector.findFaces(img)
         #print(bboxs)
+        try:
+            if ((Move_x_previous/Move_xx)*100 >5):
+                msg=(int(Move_xx))
+                Arduino.write(b'L'))
+                print(msg)
+            else:
+                Move_x_previous=Move_xx
+        except:
+            continue
+
         cv2.imshow("Image",img)
         cTime=time.time()
         fps=1/(cTime-pTime)
